@@ -1,0 +1,15 @@
+http:
+  routers:
+    dashboard:
+      rule: Host(`dashboard.localhost`)
+      service: api@internal
+      entryPoints:
+        - web
+      middlewares:
+        - auth
+  
+  middlewares:
+    auth:
+      basicAuth:
+        users:
+          - "${TRAEFIK_AUTH}"

@@ -207,6 +207,38 @@ For local development, Traefik is configured to use self-signed certificates:
   - Grafana dashboards for visualization
   - Alerting for security-related events
 
+## 🛠️ Monitoring Setup
+
+The platform includes comprehensive monitoring using Prometheus and Grafana:
+
+### Accessing Monitoring
+
+- **Grafana Dashboard**: https://dashboard.localhost:9443
+  - Username: `admin`
+  - Password: Set via `GRAFANA_PASSWORD` in `.env` (default: `admin`)
+  - Pre-configured dashboards for ML API metrics
+
+- **Prometheus**: https://metrics.localhost:9443
+  - Basic auth: `metrics:metrics` (set via `PROMETHEUS_AUTH` in `.env`)
+  - Scrapes metrics from all services
+
+### Metrics Collected
+
+- **ML API**:
+  - Request rates by endpoint and status code
+  - Request latency percentiles (p50, p90, p99)
+  - Error rates and types
+  - Model prediction metrics
+
+- **Infrastructure**:
+  - Container resource usage (CPU, memory, network)
+  - Host-level metrics
+  - Traefik metrics (request rates, response times, etc.)
+
+### Custom Dashboards
+
+Custom Grafana dashboards are provided in the `monitoring/grafana/dashboards` directory. These can be imported or modified as needed.
+
 ## 🛠️ Development Workflow
 
 ### 1. Access the Development Environment

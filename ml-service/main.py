@@ -6,9 +6,10 @@ from datetime import datetime, timedelta
 from typing import List, Optional
 import structlog
 import redis
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware import Middleware
 from pydantic import BaseModel, validator
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -20,6 +21,9 @@ from sklearn.datasets import load_iris
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
+
+# Import metrics middleware after other imports to avoid circular imports
+from app.middleware import MetricsMiddleware, metrics_endpoint
 
 # Configure structured logging
 logger = structlog.get_logger()
@@ -46,9 +50,10 @@ request_count = Counter('ml_api_requests_total', 'Total API requests', ['method'
 prediction_time = Histogram('ml_prediction_seconds', 'Time spent on predictions')
 prediction_count = Counter('ml_predictions_total', 'Total predictions made')
 
+# Create FastAPI app
 app = FastAPI(title="Secure ML API", version="1.0.0")
 
-# CORS middleware
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["https://dev.localhost"],  # Only allow dev environment
@@ -56,6 +61,12 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+
+# Add metrics middleware
+app.add_middleware(MetricsMiddleware)
+
+# Add metrics endpoint
+app.get("/metrics")(metrics_endpoint)
 
 # Pydantic models
 class Token(BaseModel):
@@ -176,6 +187,7 @@ class ModelManager:
 
 # Initialize model manager
 model_manager = ModelManager()
+
 
 # Authentication functions
 def create_access_token(data: dict):
