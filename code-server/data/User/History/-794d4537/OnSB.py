@@ -13,10 +13,11 @@ import sys
 from typing import Optional, Dict, Any
 
 # Configuration
+# Try both container name and direct IP for maximum compatibility
 BASE_URLS = [
     "http://ml-api:8000",      # Container name
+    #"http://172.19.0.5:8000"  # Direct IP
 ]
-
 VERIFY_SSL = False  # Using HTTP for internal communication
 
 class ConnectionError(Exception):

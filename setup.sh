@@ -58,8 +58,8 @@ df['target'] = iris.target
 df['target_name'] = [iris.target_names[i] for i in iris.target]
 
 # Save to data directory
-df.to_csv('../data/iris_dataset.csv', index=False)
-print("Sample dataset created at data/iris_dataset.csv")
+df.to_csv('../code-server/data/iris_dataset.csv', index=False)
+print("Sample dataset created at code-server/data/iris_dataset.csv")
 EOF
 
 # Build and start the environment

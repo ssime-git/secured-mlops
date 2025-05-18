@@ -13,6 +13,7 @@ import sys
 from typing import Optional, Dict, Any
 
 # Configuration
+# Try both container name and direct IP for maximum compatibility
 BASE_URLS = [
     "http://ml-api:8000",      # Container name
 ]

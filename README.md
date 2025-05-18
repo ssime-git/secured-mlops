@@ -1,286 +1,406 @@
-# Secure MLOps Architecture
+# Secure MLOps Platform
 
-A production-ready MLOps setup with comprehensive security, using Docker Compose, Traefik, and a Code Server development environment.
+A production-ready MLOps platform demonstrating security best practices for machine learning operations. This environment showcases how to implement a secure, isolated, and monitored ML infrastructure using Docker, Traefik, and modern security patterns.
 
-## Quick Start
+## 🚀 Features
 
+- **Secure Network Architecture**: Isolated backend network with controlled access points
+- **Defense-in-Depth Security**: Multiple security layers including TLS, authentication, and network isolation
+- **Secure Development Environment**: Web-based VS Code with pre-installed ML tools running as non-root user
+- **Secure ML API**: Production-ready API with JWT authentication, rate limiting, and input validation
+- **Comprehensive Monitoring**: Prometheus and Grafana for metrics, alerting, and visualization
+- **TLS Everywhere**: Self-signed certificates for local development, Let's Encrypt integration for production
+- **Least Privilege Principle**: Non-root container execution and minimal base images
+
+## 🏗️ Network Architecture & Security
+
+```mermaid
+graph TD
+    Client[Client Browser] -->|HTTPS :9443| Traefik[Traefik Reverse Proxy]
+    
+    subgraph Frontend Network
+        Traefik -->|TLS| CodeServer[Code Server IDE]
+        Traefik -->|TLS| MLAPI[ML API Service]
+        Traefik -->|TLS| Prometheus[Prometheus Metrics]
+        Traefik -->|TLS| Grafana[Grafana Dashboard]
+    end
+    
+    subgraph Backend Network - Isolated
+        MLAPI --> Redis[(Redis Cache)]
+        Prometheus --> MLAPI
+        Prometheus --> CodeServer
+        Prometheus --> Traefik
+    end
+    
+    classDef secure fill:#e8f5e9,stroke:#2e7d32
+    class Backend Network - Isolated secure
+```
+
+### Network Segmentation
+
+The platform implements a multi-tier network architecture for enhanced security:
+
+1. **Frontend Network**: 
+   - Accessible by Traefik reverse proxy
+   - Allows controlled access to services
+   - All traffic is TLS encrypted
+
+2. **Backend Network**: 
+   - Marked as `internal: true` in Docker Compose
+   - Not accessible from outside Docker
+   - Services can communicate securely
+   - No direct internet access
+
+3. **ML Network**:
+   - Dedicated network for ML services
+   - Enables secure model training and inference
+
+### Security Implementation
+
+This architecture implements defense-in-depth with multiple security layers:
+
+1. **Edge Security**:
+   - TLS termination at Traefik
+   - HTTP-to-HTTPS redirection
+   - Strict security headers
+   - Rate limiting
+
+2. **Service Security**:
+   - Non-root container execution
+   - JWT authentication for API
+   - Password protection for dashboards
+   - Minimal base images
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Docker and Docker Compose installed
+- Ports 9080 (HTTP) and 9443 (HTTPS) available
+
+### 1. Clone and Setup
 ```bash
+git clone [your-repo-url]
+cd secured-mlops
+
+# Run the setup script to create necessary directories and configurations
 chmod +x setup.sh
 ./setup.sh
 ```
 
-## Architecture Overview
+The setup script will:
+- Create required directories (workspace, models, logs, etc.)
+- Generate secure random secrets for JWT and Redis
+- Set proper file permissions
+- Create sample training data and scripts
 
-```sh
-┌─────────────────────────────────────────────────────────────┐
-│                      Traefik (Reverse Proxy)                │
-│                    HTTPS Termination                        │
-└─────────────────────┬─────────────────┬─────────────────────┘
-                      │                 │
-                      ▼                 ▼
-            ┌─────────────────┐  ┌─────────────────┐
-            │   Code Server   │  │    ML API       │
-            │  Development    │  │   Service       │
-            │  Environment    │  │                 │
-            └─────────────────┘  └─────────────────┘
-                      │                 │
-                      │                 ▼
-                      │          ┌─────────────────┐
-                      │          │     Redis       │
-                      │          │ Rate Limiting   │
-                      │          └─────────────────┘
-                      ▼                 │
-            ┌─────────────────┐         │
-            │   Prometheus    │         │
-            │   Monitoring    │◄────────┘
-            └─────────────────┘
+### 2. Configure Local DNS
+Add these entries to your `/etc/hosts` file for local development:
+```
+127.0.0.1 dashboard.localhost
+127.0.0.1 dev.localhost
+127.0.0.1 api.localhost
+127.0.0.1 grafana.localhost
+127.0.0.1 metrics.localhost
 ```
 
-## HTTPS Implementation
-
-### Why HTTPS?
-
-This implementation uses HTTPS (HTTP Secure) for all services to ensure:
-- **Data Confidentiality**: Encrypts all data in transit between clients and services
-- **Data Integrity**: Prevents tampering with data during transmission
-- **Authentication**: Verifies the identity of the server
-- **SEO Benefits**: Search engines prioritize HTTPS websites
-- **Modern Web Standards**: Many web features require secure contexts
-
-### Implementation Details
-
-1. **Traefik as Reverse Proxy**
-   - Terminates TLS/SSL connections
-   - Handles automatic HTTP to HTTPS redirection
-   - Manages Let's Encrypt certificates
-
-2. **Automatic Certificate Management**
-   - Uses Let's Encrypt for free SSL/TLS certificates
-   - Automatic certificate renewal
-   - Supports both HTTP and TLS challenges
-
-3. **Security Headers**
-   - HTTP Strict Transport Security (HSTS) enabled
-   - Content Security Policy (CSP) headers
-   - X-Content-Type-Options and X-Frame-Options set
-
-### Accessing Services
-
-All services are accessible via HTTPS on port 9443 with the following URLs:
-
-- **Code Server (Development Environment)**: https://dev.localhost:9443
-- **ML API**: https://api.localhost:9443
-- **Grafana (Monitoring)**: https://grafana.localhost:9443
-- **Prometheus (Metrics)**: https://metrics.localhost:9443
-- **Traefik Dashboard**: https://dashboard.localhost:9443
-
-### Development Notes
-
-- **Self-Signed Certificates**: For local development, self-signed certificates are used
-  - You may need to accept the security warning in your browser
-  - In production, use proper domain names and Let's Encrypt certificates
-
-- **Local DNS**: Add these entries to your `/etc/hosts` file:
-  ```
-  127.0.0.1 dashboard.localhost
-  127.0.0.1 dev.localhost
-  127.0.0.1 api.localhost
-  127.0.0.1 grafana.localhost
-  127.0.0.1 metrics.localhost
-  ```
-
-## Security Best Practices
-
-- TLS 1.3 encryption enabled via Traefik
-
-### 1. Secure Data Handling 
-- **Encryption**: All communication via HTTPS
-- **Access Control**: JWT-based authentication with role-based access
-- **Audit Logging**: Comprehensive structured logging of all actions
-- **Data Validation**: Input validation and sanitization
-
-### 2. Model Protection 
-- **Model Integrity**: SHA256 hash verification for model files
-- **Version Control**: Model versioning with metadata tracking
-- **Performance Monitoring**: Real-time accuracy and behavior monitoring
-- **Anomaly Detection**: Statistical validation during training
-
-### 3. Infrastructure Security 
-- **Container Security**: Non-root user execution, minimal base images
-- **Network Segmentation**: Isolated backend network for services
-- **Regular Updates**: Pinned dependencies with update procedures
-- **Rate Limiting**: Per-user API rate limiting with Redis
-
-### 4. Continuous Monitoring 
-- **Prometheus Metrics**: Request counts, latency, prediction metrics
-- **Health Checks**: Automated container health monitoring
-- **Incident Response**: Structured error logging with severity levels
-- **Audit Trail**: Complete request and prediction logging
-
-## Services
-
-### Code Server (Development Environment)
-- **Access**: https://dev.localhost:9443
-- **Features**: VS Code in browser with ML libraries pre-installed
-- **Security**: Password protected, isolated environment
-- **Connectivity**: Direct access to ML API via helper module (`connect_api.py`)
-
-### ML API Service
-- **Access**: https://api.localhost:9443
-- **Direct Access**: http://172.19.0.5:8000 (from code-server)
-- **Model**: Iris classification using Random Forest
-- **Security**: JWT authentication, input validation, rate limiting
-
-### Monitoring Stack
-- **Prometheus**: https://metrics.localhost:9443
-- **Grafana**: https://grafana.localhost:9443
-- **Traefik Dashboard**: https://dashboard.localhost:9443
-- **Metrics**: Request rates, response times, prediction counts
-
-## Environment Setup
-
-### Configuration
-
-The environment is configured using the `.env` file. A template is provided in `.env.template` that you can copy and modify:
-
-```bash
-cp .env.template .env
-# Edit .env with your preferred settings
-```
-
-### Building and Starting Services
-
+### 3. Start Services
 ```bash
 # Build and start all services
 make rebuild
 
-# View logs
-make logs
-
-# Restart services
-make restart
+# Or use docker-compose directly
+docker-compose up -d
 ```
 
-## API Endpoints
+### 4. Access Services
+All services are accessible through Traefik on port 9443 with HTTPS:
 
-### Authentication
-```bash
-curl -X POST https://api.localhost:9443/token
-```
+| Service | URL | Description | Default Credentials |
+|---------|-----|-------------|--------------------|
+| Development IDE | https://dev.localhost:9443 | Web-based VS Code | From `.env` |
+| ML API | https://api.localhost:9443 | Model serving API | JWT auth |
+| Grafana | https://grafana.localhost:9443 | Monitoring dashboards | admin/admin |
+| Prometheus | https://metrics.localhost:9443 | Metrics collection | N/A |
+| Traefik Dashboard | https://dashboard.localhost:9443 | Reverse proxy admin | admin/admin |
 
-## Development Workflow
+> **Note**: For local development, self-signed certificates are used. Your browser will show a security warning which you can safely bypass for local testing.
 
-### Connecting to ML API from Code Server
+## 🔧 Configuration Details
 
-The code server environment includes a helper module (`connect_api.py`) that simplifies connectivity to the ML API service. This module handles the direct IP-based connection to ensure reliable communication between services.
+### Key Configuration Files
 
+1. **docker-compose.yml**
+   - Defines all services and their security configurations
+   - Sets up network segmentation with frontend and backend networks
+   - Configures Traefik as the secure entry point
+
+2. **.env**
+   - Contains sensitive configuration values
+   - Auto-generated by setup.sh with secure random values
+   - Permissions set to 600 (owner read/write only)
+
+3. **setup.sh**
+   - Initializes the environment securely
+   - Creates necessary directories with proper permissions
+   - Generates secure random secrets for JWT and Redis
+
+### Certificate Management
+
+For local development, Traefik is configured to use self-signed certificates:
+
+1. **Certificate Storage**
+   - Certificates are stored in `./letsencrypt/acme.json`
+   - This file is created automatically by Traefik on first run
+   - Contains both certificates and private keys
+
+2. **Production Deployment**
+   - For production, Traefik can use Let's Encrypt for valid certificates
+   - Configuration is already in place via the `leresolver` certificate resolver
+   - Just update the `SSL_EMAIL` environment variable with a valid email
+
+## 🔒 Security Implementation
+
+### 1. Network Security
+
+- **Multi-tier Network Architecture**:
+  - Frontend network for Traefik-to-service communication
+  - Backend network (`internal: true`) for service-to-service communication
+  - No direct exposure of internal services to the internet
+
+- **TLS Everywhere**:
+  - All communication encrypted with TLS
+  - HTTP automatically redirected to HTTPS
+  - Strong cipher suites enforced
+
+### 2. Container Security
+
+- **Least Privilege Principle**:
+  - Services run as non-root users (e.g., ML API runs as `mluser`)
+  - Minimal base images to reduce attack surface
+  - Read-only file systems where possible
+
+- **Resource Constraints**:
+  - Memory limits to prevent DoS attacks
+  - CPU limits for fair resource allocation
+
+### 3. API Security
+
+- **Authentication & Authorization**:
+  - JWT-based authentication for API access
+  - Role-based access control for different operations
+  - Secure password storage with bcrypt hashing
+
+- **Input Validation & Rate Limiting**:
+  - Strict validation of all API inputs
+  - Rate limiting (100 requests/minute) to prevent abuse
+  - Redis-backed rate limiting for distributed deployments
+
+### 4. Monitoring & Incident Response
+
+- **Comprehensive Logging**:
+  - Structured logging with severity levels
+  - Request/response tracing for audit purposes
+  - Logs stored in dedicated volume
+
+- **Real-time Monitoring**:
+  - Prometheus metrics for all services
+  - Grafana dashboards for visualization
+  - Alerting for security-related events
+
+## 🛠️ Development Workflow
+
+### 1. Access the Development Environment
+
+1. Open https://dev.localhost:9443 in your browser
+2. Log in with the password from your `.env` file
+3. You'll be placed in the `/config/workspace` directory with pre-installed ML tools
+
+### 2. Connecting to the ML API
+
+There are multiple ways to connect to the ML API from the code-server environment:
+
+#### Option 1: Using the helper module (recommended)
 ```python
-# Import the helper module
+# In code-server terminal, create connect_api.py
 from connect_api import get_health, predict, get_model_info
 
-# Check API health
-health = get_health()
-print(f"API Status: {health['status']}")
+# Check API status
+print(get_health())
 
-# Make predictions
+# Make a prediction
 result = predict({"features": [5.1, 3.5, 1.4, 0.2]})
-print(f"Prediction: {result}")
-
-# Get model information
-model_info = get_model_info()
-print(f"Model Info: {model_info}")
+print(result)
 ```
 
-### Testing Connectivity
+#### Option 2: Direct IP connection
+```python
+import requests
 
-To verify connectivity between the code server and ML API, run:
+# Connect directly to the ML API container using its internal IP
+response = requests.get("http://172.19.0.5:8000/health")
+print(response.json())
+
+# Make a prediction
+response = requests.post(
+    "http://172.19.0.5:8000/predict",
+    json={"features": [5.1, 3.5, 1.4, 0.2]}
+)
+print(response.json())
+```
+
+#### Option 3: Via Traefik (external route)
+```python
+import requests
+
+# Connect through Traefik (requires handling self-signed certs)
+response = requests.post(
+    "https://api.localhost:9443/predict",
+    json={"features": [5.1, 3.5, 1.4, 0.2]},
+    verify=False  # Skip SSL verification for self-signed certs
+)
+print(response.json())
+```
+
+### 3. Training a New Model
 
 ```bash
-make test-connectivity
+# In the code-server terminal
+python train_model.py
 ```
 
-### Training a New Model
+This will:
+1. Train a new model on the Iris dataset
+2. Save it to `/config/models/iris_model.pkl`
+3. The ML API will automatically detect the new model
 
-To train a new model from the code server environment:
+### 4. Testing the Model
 
 ```bash
-make train
+# Run the test script
+python test_api_locally.py
 ```
 
-### Make Prediction
+## 📊 Security Monitoring
+
+### Comprehensive Monitoring Stack
+
+The platform includes a complete monitoring stack focused on security:
+
+1. **Prometheus**
+   - Collects metrics from all services
+   - Monitors for suspicious activity patterns
+   - Tracks resource usage to detect anomalies
+   - Accessible at https://metrics.localhost:9443
+
+2. **Grafana**
+   - Visualizes security metrics and logs
+   - Pre-configured dashboards for security monitoring
+   - Accessible at https://grafana.localhost:9443
+
+### Security-Focused Dashboards
+
+- **API Security Dashboard**: 
+  - Authentication failures
+  - Rate limit breaches
+  - Suspicious request patterns
+  - Input validation errors
+
+- **Infrastructure Security**:
+  - Container resource usage
+  - Network traffic patterns
+  - System-level security events
+
+- **ML Model Security**:
+  - Model drift detection
+  - Prediction anomalies
+  - Data validation metrics
+
+### Security Alerting
+
+Configure security-focused alerts in Grafana for:
+- Authentication failures exceeding thresholds
+- Unusual traffic patterns
+- API rate limit breaches
+- Model performance degradation
+
+## 🚀 Production Security Considerations
+
+### 1. Certificate Management
+
+For production deployment, switch from self-signed to Let's Encrypt certificates:
+
 ```bash
-curl -X POST https://api.localhost/predict \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{"features": [5.1, 3.5, 1.4, 0.2]}'
+# In .env file
+SSL_EMAIL=your-real-email@example.com  # Required for Let's Encrypt
 ```
 
-### Model Information
+Traefik will automatically:
+- Register with Let's Encrypt
+- Complete the HTTP-01 challenge
+- Obtain and renew certificates
+- Store them securely in `acme.json`
+
+### 2. Network Security Hardening
+
+1. **Firewall Configuration**:
+   ```bash
+   # Only allow necessary ports
+   ufw allow 80/tcp   # Required for Let's Encrypt HTTP challenge
+   ufw allow 443/tcp  # HTTPS traffic
+   ufw default deny incoming
+   ufw enable
+   ```
+
+2. **Additional Security Headers**:
+   - HSTS (HTTP Strict Transport Security)
+   - CSP (Content Security Policy)
+   - XSS Protection
+
+### 3. Authentication Hardening
+
+1. **Update Default Credentials**:
+   ```bash
+   # In .env file
+   CODE_SERVER_PASSWORD=strong-unique-password-1
+   GRAFANA_PASSWORD=strong-unique-password-2
+   TRAEFIK_DASHBOARD_AUTH=admin:$apr1$secure-hash  # Use htpasswd to generate
+   ```
+
+2. **Consider OAuth Integration**:
+   - Configure OAuth2 for Grafana
+   - Implement OIDC for code-server
+   - Add MFA where possible
+
+## 🛠️ Maintenance
+
+### Common Commands
 ```bash
-curl https://api.localhost/model/info \
-  -H "Authorization: Bearer <token>"
-```
+# View logs
+docker-compose logs -f
 
-## File Structure
-
-```
-.
-├── docker-compose.yml          # Main orchestration
-├── .env                        # Environment variables
-├── setup.sh                    # Setup script
-├── code-server/
-│   └── Dockerfile             # Development environment
-├── ml-service/
-│   ├── Dockerfile             # ML API container
-│   ├── main.py                # FastAPI application
-│   └── requirements.txt       # Python dependencies
-├── workspace/
-│   ├── train_model.py         # Model training script
-│   └── test_client.py         # API testing script
-├── monitoring/
-│   └── prometheus.yml         # Prometheus configuration
-├── models/                    # Model storage (created at runtime)
-├── logs/                      # Application logs
-└── data/                      # Training data
-```
-
-## Development Workflow
-
-1. **Train Model**: Use `workspace/train_model.py` to train and validate models
-2. **Test API**: Run `workspace/test_client.py` to verify functionality
-3. **Monitor**: Check metrics at https://metrics.localhost
-4. **Develop**: Code in the browser at https://dev.localhost
-
-## Security Best Practices
-
-- TLS 1.3 encryption enabled via Traefik
-- Automated Let's Encrypt certificate management
-- Strict certificate pinning
-- HSTS headers enforced
-- OCSP stapling configured
-
-## Production Considerations
-
-- Replace Traefik ACME staging with production server
-- Implement proper user management and authentication
-- Add container scanning to CI/CD pipeline
-- Set up log aggregation (ELK stack)
-- Configure backup strategies for models and data
-- Implement proper secrets management (e.g., HashiCorp Vault)
-
-## Troubleshooting
-
-Check service logs:
-```bash
-docker-compose logs [service-name]
-```
-
-Restart services:
-```bash
+# Restart services
 docker-compose restart
+
+# Update services
+docker-compose pull
+docker-compose up -d
+
+# Backup certificates
+cp -r letsencrypt letsencrypt_backup_$(date +%Y%m%d)
 ```
 
-Full reset:
-```bash
-docker-compose down -v
-docker-compose up -d
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+Built with ❤️ for secure and scalable MLOps

@@ -102,7 +102,7 @@ services:
       - ./code-server/config:/config
       - ./workspace:/config/workspace
       - ./models:/config/models
-      - ./data:/config/data
+      - ./code-server/data:/config/data
       - /var/run/docker.sock:/var/run/docker.sock
       - ./code-server/custom-init.sh:/custom-cont-init.d/setup.sh
     # No direct port exposure - access through Traefik only
