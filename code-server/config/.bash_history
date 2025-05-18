@@ -27,3 +27,9 @@ python train_model.py
 python test_api_auth.py 
 pwd
 clear
+python --version
+whoami
+which python
+python test_api_auth.py 
+clear
+python test_api_auth.py 

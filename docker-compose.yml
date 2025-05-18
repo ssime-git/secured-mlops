@@ -36,7 +36,7 @@ services:
       - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
       - "--entrypoints.web.http.redirections.entryPoint.permanent=true"
       
-      # Enable Let's Encrypt with HTTP challenge
+      # Use Let's Encrypt with HTTP challenge for local development
       - "--certificatesresolvers.leresolver.acme.email=${SSL_EMAIL}"
       - "--certificatesresolvers.leresolver.acme.storage=/letsencrypt/acme.json"
       - "--certificatesresolvers.leresolver.acme.httpchallenge.entrypoint=web"
@@ -57,14 +57,15 @@ services:
     labels:
       # Secure dashboard with HTTPS and basic auth
       - "traefik.enable=true"
-      - "traefik.http.routers.dashboard.rule=Host(`dashboard.localhost`)"
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.localhost`)"
       - "traefik.http.routers.dashboard.entrypoints=websecure"
       - "traefik.http.routers.dashboard.service=api@internal"
       - "traefik.http.routers.dashboard.tls.certresolver=leresolver"
-      - "traefik.http.routers.dashboard.middlewares=dashboard-auth,security-headers"
+      - "traefik.http.routers.dashboard.tls=true"
+      - "traefik.http.routers.dashboard.middlewares=dashboard-auth,security-headers@docker"
       
       # Basic authentication for dashboard (admin:admin)
-      - "traefik.http.middlewares.dashboard-auth.basicauth.users=${TRAEFIK_DASHBOARD_AUTH}"
+      - "traefik.http.middlewares.dashboard-auth.basicauth.users=${TRAEFIK_DASHBOARD_AUTH:-admin:$apr1$ruca84Hq$mbjdMxzA0WUHTA0VUuVkP0}"
       
       # Security headers middleware
       - "traefik.http.middlewares.security-headers.headers.frameDeny=true"
@@ -75,6 +76,9 @@ services:
       - "traefik.http.middlewares.security-headers.headers.stsSeconds=31536000"
       - "traefik.http.middlewares.security-headers.headers.stsIncludeSubdomains=true"
       - "traefik.http.middlewares.security-headers.headers.stsPreload=true"
+      - "traefik.http.middlewares.security-headers.headers.sslRedirect=true"
+      - "traefik.http.middlewares.security-headers.headers.sslTemporaryRedirect=true"
+      - "traefik.http.middlewares.security-headers.headers.sslHost=localhost"
     networks:
       - frontend
       - backend
@@ -244,7 +248,7 @@ services:
       - GF_SECURITY_DISABLE_GRAVATAR=true
       - GF_ANALYTICS_REPORTING_ENABLED=false
       - GF_ANALYTICS_CHECK_FOR_UPDATES=false
-      - GF_INSTALL_PLUGINS=grafana-piechart-panel,grafana-worldmap-panel-ng
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
       - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
       - GF_PATHS_CONFIG=/etc/grafana/grafana.ini
     volumes:
@@ -259,7 +263,8 @@ services:
       - "traefik.http.routers.grafana.entrypoints=websecure"
       - "traefik.http.routers.grafana.tls.certresolver=leresolver"
       - "traefik.http.services.grafana.loadbalancer.server.port=3000"
-      - "traefik.http.routers.grafana.middlewares=security-headers"
+      - "traefik.http.routers.grafana.middlewares=security-headers@docker"
+      - "traefik.http.services.grafana.loadbalancer.server.scheme=http"
     depends_on:
       - prometheus
     networks:

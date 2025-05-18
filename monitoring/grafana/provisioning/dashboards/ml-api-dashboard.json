@@ -279,12 +279,12 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{status_code=~"5.."}[1m])) by (path)",
+          "expr": "sum(rate(http_requests_total{status_code=~\"5..\"}[1m])) by (path)",
           "legendFormat": "{{path}} 5xx",
           "refId": "A"
         },
         {
-          "expr": "sum(rate(http_requests_total{status_code=~"4.."}[1m])) by (path)",
+          "expr": "sum(rate(http_requests_total{status_code=~\"4..\"}[1m])) by (path)",
           "legendFormat": "{{path}} 4xx",
           "refId": "B"
         }
