@@ -21,5 +21,8 @@ clean:
 train:
 	docker-compose exec code-server /usr/bin/python3 /config/workspace/train_model.py
 
+test-connectivity:
+	docker-compose exec code-server python3 /config/workspace/test_api_connection.py
+
 test:
 	docker-compose exec code-server /usr/bin/python3 /config/workspace/test_client.py

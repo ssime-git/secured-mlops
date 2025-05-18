@@ -98,7 +98,7 @@ def train_model():
         "cv_std": float(cv_scores.std()),
         "created_at": datetime.utcnow().isoformat(),
         "model_hash": model_hash,
-        "feature_names": data.feature_names.tolist(),
+        "feature_names": data.feature_names,
         "target_names": data.target_names.tolist(),
         "n_samples": int(X.shape[0]),
         "n_features": int(X.shape[1])

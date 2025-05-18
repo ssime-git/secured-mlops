@@ -1,65 +1,66 @@
-version: '3.8'
-
 services:
   # Traefik reverse proxy with secure configuration
   traefik:
     image: traefik:v2.9
     container_name: traefik
     restart: unless-stopped
-    env_file: .env
-    # Add local domain resolution within the container
+    env_file:
+      - .env
+      - ./config/traefik-https.env
+    environment:
+      - SSL_EMAIL=${SSL_EMAIL:-user@example.com}
     extra_hosts:
       - "dev.localhost:127.0.0.1"
       - "api.localhost:127.0.0.1"
       - "metrics.localhost:127.0.0.1"
       - "dashboard.localhost:127.0.0.1"
+      - "host.docker.internal:host-gateway"
     command:
-      # Secure API configuration
-      - "--api.dashboard=true"
-      - "--api.insecure=false"
-      
-      # Provider configuration
+      # Global configuration
+      - "--log.level=INFO"
+      - "--accesslog=true"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--providers.docker.network=frontend"
       
-      # Entry points - match the ports we're exposing
+      # Enable the dashboard and API
+      - "--api.dashboard=true"
+      - "--api.insecure=false"
+      
+      # Entrypoints
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
       
-      # Entry points configuration
-      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
-      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
-      - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
+      # Redirect HTTP to HTTPS
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      - "--entrypoints.web.http.redirections.entryPoint.permanent=true"
       
-      # API and security configuration
-      - "--api.dashboard=true"
-      - "--api.insecure=false"
+      # Enable Let's Encrypt with HTTP challenge
+      - "--certificatesresolvers.leresolver.acme.email=${SSL_EMAIL}"
+      - "--certificatesresolvers.leresolver.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.leresolver.acme.httpchallenge.entrypoint=web"
+      
+      # Enable Docker provider
+      - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=secured-mlops_backend"
       
-      # Logging
-      - "--log.level=INFO"
-      - "--accesslog=true"
-      
-      # API and Dashboard
-      - "--api.insecure=false"
-      - "--api.dashboard=true"
-      
+      # Log level
+      - "--log.level=DEBUG"
     ports:
       - "9080:80"
       - "9443:443"
-      
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "./letsencrypt:/letsencrypt"
-      
     labels:
       # Secure dashboard with HTTPS and basic auth
       - "traefik.enable=true"
       - "traefik.http.routers.dashboard.rule=Host(`dashboard.localhost`)"
-      # Enable TLS for security
-      - "traefik.http.routers.dashboard.tls=true"
+      - "traefik.http.routers.dashboard.entrypoints=websecure"
       - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.tls.certresolver=leresolver"
       - "traefik.http.routers.dashboard.middlewares=dashboard-auth,security-headers"
       
       # Basic authentication for dashboard (admin:admin)
@@ -74,16 +75,13 @@ services:
       - "traefik.http.middlewares.security-headers.headers.stsSeconds=31536000"
       - "traefik.http.middlewares.security-headers.headers.stsIncludeSubdomains=true"
       - "traefik.http.middlewares.security-headers.headers.stsPreload=true"
-      
     networks:
       - frontend
       - backend
 
   # Code Server for development
   code-server:
-    build:
-      context: ./code-server
-      dockerfile: Dockerfile
+    image: lscr.io/linuxserver/code-server:latest
     container_name: ml-dev-env
     restart: unless-stopped
     # Add local domain resolution within the container
@@ -92,6 +90,7 @@ services:
       - "api.localhost:127.0.0.1"
       - "metrics.localhost:127.0.0.1"
       - "dashboard.localhost:127.0.0.1"
+      - "host.docker.internal:host-gateway"
     environment:
       - PUID=1000
       - PGID=1000
@@ -105,12 +104,13 @@ services:
       - ./models:/config/models
       - ./data:/config/data
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./:/config/project
+      - ./code-server/custom-init.sh:/custom-cont-init.d/setup.sh
     # No direct port exposure - access through Traefik only
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.code.rule=Host(`dev.localhost`)"
-      - "traefik.http.routers.code.tls=true"
+      - "traefik.http.routers.code.entrypoints=websecure"
+      - "traefik.http.routers.code.tls.certresolver=leresolver"
       - "traefik.http.services.code.loadbalancer.server.port=8443"
       - "traefik.http.routers.code.middlewares=security-headers"
     networks:
@@ -130,6 +130,7 @@ services:
       - "api.localhost:127.0.0.1"
       - "metrics.localhost:127.0.0.1"
       - "dashboard.localhost:127.0.0.1"
+      - "host.docker.internal:host-gateway"
     environment:
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
       - MODEL_PATH=/app/models
@@ -144,10 +145,11 @@ services:
     # No direct port exposure - access through Traefik only
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.api.rule=Host(`api.localhost`)"
-      - "traefik.http.routers.api.tls=true"
-      - "traefik.http.services.api.loadbalancer.server.port=8000"
-      - "traefik.http.routers.api.middlewares=security-headers"
+      - "traefik.http.routers.ml-api.rule=Host(`api.localhost`)"
+      - "traefik.http.routers.ml-api.entrypoints=websecure"
+      - "traefik.http.routers.ml-api.tls.certresolver=leresolver"
+      - "traefik.http.services.ml-api.loadbalancer.server.port=8000"
+      - "traefik.http.routers.ml-api.middlewares=security-headers"
       # API rate limiting (100 requests per minute)
       - "traefik.http.middlewares.api-security.ratelimit.average=100"
       - "traefik.http.middlewares.api-security.ratelimit.burst=50"
@@ -270,6 +272,12 @@ networks:
     driver: bridge
     internal: true
     enable_ipv6: false
+  ml-network:
+    driver: bridge
+    # Ensure proper DNS resolution between containers
+    driver_opts:
+      com.docker.network.bridge.enable_icc: "true"
+      com.docker.network.bridge.enable_ip_masquerade: "true"
 
 volumes:
   redis_data:
