@@ -18,22 +18,26 @@ A production-ready MLOps platform demonstrating security best practices for mach
 graph TD
     Client[Client Browser] -->|HTTPS :9443| Traefik[Traefik Reverse Proxy]
     
-    subgraph Frontend Network
+    subgraph Frontend_Network
         Traefik -->|TLS| CodeServer[Code Server IDE]
         Traefik -->|TLS| MLAPI[ML API Service]
         Traefik -->|TLS| Prometheus[Prometheus Metrics]
         Traefik -->|TLS| Grafana[Grafana Dashboard]
     end
     
-    subgraph Backend Network - Isolated
+    subgraph Backend_Network_Isolated
         MLAPI --> Redis[(Redis Cache)]
         Prometheus --> MLAPI
         Prometheus --> CodeServer
         Prometheus --> Traefik
     end
     
-    classDef secure fill:#e8f5e9,stroke:#2e7d32
-    class Backend Network - Isolated secure
+    %% Define a "secure" style
+    classDef secure fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    
+    %% Apply the "secure" class to nodes (not to subgraphs)
+    class Traefik,CodeServer,MLAPI,Prometheus,Grafana,Redis secure
+
 ```
 
 ### Network Segmentation
